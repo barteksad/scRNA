@@ -3,6 +3,8 @@ _convert_: object
 messages:
   - _target_: langchain_core.prompts.chat.HumanMessagePromptTemplate.from_template
     template: |
+      You are a biomedical researcher. Your task is to extract the biologically relevant information from a sample's metadata indicated by <<<>>> and representing them in natural language.
+      
       # Instructions
 
       ## Represent Biological Information
@@ -26,6 +28,6 @@ messages:
       <<<
       {query}
 
-      Top 20 most expressed genes in the sample:
+      Top K most expressed genes in the sample:
       {top_k_genes}
       >>>
