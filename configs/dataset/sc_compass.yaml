@@ -1,0 +1,15 @@
+_target_: datasets.SingleCellDataset
+h5ad_dir: /local_storage_1/bs429589/sc_rna/data/mouse/datasets/scCompass
+n_files: 1
+n_rows_per_file: 1
+obs_cols: 
+  - cell_type
+  - n_genes_by_counts
+  - log1p_n_genes_by_counts
+  - total_counts
+  - log1p_total_counts
+  - pct_counts_in_top_50_genes
+  - pct_counts_in_top_100_genes
+  - pct_counts_in_top_200_genes
+  - pct_counts_in_top_500_genes
+  - n_genes

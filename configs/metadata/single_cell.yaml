@@ -1,0 +1,2 @@
+_target_: metadata.SingleCellMeta
+obs_cols: ${dataset.obs_cols}

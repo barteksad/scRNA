@@ -1,0 +1,6 @@
+_target_: langchain_openai.ChatOpenAI
+_convert_: object
+model: ${exp.model}
+temperature: ${exp.temperature}
+max_tokens: null
+timeout: null

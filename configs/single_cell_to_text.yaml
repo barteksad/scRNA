@@ -1,0 +1,23 @@
+defaults:
+  - _self_
+  - dataset: sc_compass
+  - metadata: single_cell
+  - prompt: process_annotations_system
+  - llm: openai
+  - model: mouseformer
+
+exp:
+  run_func: 
+    _target_: experiment.extract_text_annotation
+
+  seed: 42
+  log_dir: # set during runtime to automatically created dir
+  
+  model: gpt-4o-mini # o1-mini 
+  temperature: 0.7
+  top_k_genes: 10
+
+wandb:
+  project: sc-rna
+  entity:
+  tags:

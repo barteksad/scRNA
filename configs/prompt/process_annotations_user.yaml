@@ -1,0 +1,31 @@
+_target_: langchain_core.prompts.ChatPromptTemplate
+_convert_: object
+messages:
+  - _target_: langchain_core.prompts.chat.HumanMessagePromptTemplate.from_template
+    template: |
+      # Instructions
+
+      ## Represent Biological Information
+      Only consider information that are reflective of the sample's biology, i.e. the phenotype and transcriptome of the contained cells, such as cell type or any pertinent conditions or treatments.
+
+      ## Study-Level Information
+      This is just additional context and should not be included in the response, beyond informing about the the nature of the sample.
+
+      ## Ignore Non-Biological Information
+      Ignore information that is not relevant to the cellular state of the sample. Specifically, exclude all IDs and details about technical and methodological processes such as sequencing type, read length, platform, or any other laboratory technique-related information.
+
+      ## Response Template
+      Respond in two parts following the JSON template below.
+      {{
+          "1. Relevant Information to be Included": <List[str]: List of information to be extracted, according to the instructions above>,
+          "2. Final Response": <str: brief natural language description of the sample focusing solely on the biological aspects that contribute to understanding its cellular state>,
+      }}
+
+      # Provided Metadata
+
+      <<<
+      {query}
+
+      Top K most expressed genes in the sample:
+      {top_k_genes}
+      >>>
