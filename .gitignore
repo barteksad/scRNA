@@ -2,4 +2,9 @@ data
 .vscode
 *.bin
 *.pth
-*pt
+*.pt
+env
+outputs
+slurm_logs
+**__pycache__**
+.env
