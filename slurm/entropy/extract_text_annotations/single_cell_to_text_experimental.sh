@@ -12,8 +12,7 @@ export HYDRA_FULL_ERROR=1
 # openai o1 doesn't use system prompt and it only accepts temperature = 1
 srun python src/main.py \
     --config-name single_cell_to_text \
-    exp.model=o1-preview \
-    exp.temperature=1.0
+    prompt=experimental_1
 
 
 

@@ -1,0 +1,17 @@
+_target_: langchain_core.prompts.ChatPromptTemplate
+_convert_: object
+messages:
+  - _target_: langchain_core.prompts.chat.HumanMessagePromptTemplate.from_template
+    template: |
+      Your task is to generate a natural language description based on single cell RNA-seq data. 
+      We want to train a CLIP like model and need a large, diverse, realistic and high-quality dataset of text annotations for our cell data.
+      Write the text annotation in a way a human using the final model would do.
+      Respond the JSON template below.
+      {{
+          "Final Response": <str: brief natural language description of the sample focusing solely on the biological aspects that contribute to understanding its cellular state>,
+      }}
+      Here is the provided cell data:
+      {query}
+
+      Top K most expressed genes in the sample:
+      {top_k_genes}

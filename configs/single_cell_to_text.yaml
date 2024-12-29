@@ -2,7 +2,7 @@ defaults:
   - _self_
   - dataset: sc_compass
   - metadata: single_cell
-  - prompt: process_annotations_system
+  - prompt: cell_whisper_single_cell
   - llm: openai
   - model: mouseformer
 
