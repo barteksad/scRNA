@@ -12,7 +12,7 @@ export HYDRA_FULL_ERROR=1
 srun python src/main.py \
     --config-name single_cell_to_text \
     exp.temperature=1.0 \
-    dataset.n_rows_per_file=10 \
+    dataset.n_rows_per_file=1 \
 
 
 
