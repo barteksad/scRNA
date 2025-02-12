@@ -33,13 +33,23 @@ def extract_text_annotation(config: DictConfig):
     def generate_text_annotation(messages_list):
         return llm.invoke(messages_list)
     
-    for i, (x, obs, var) in tqdm(enumerate(dataset)):
-        tokenized_cell = model.tokenize_single_cell(x[None, :], obs, var)
-        meta_text = metadata.get_metadata(obs, var)
-        if "top_k_genes" in prompt.input_variables:
-            messages_list = prompt.format(query=meta_text, top_k_genes=", ".join(tokenized_cell[0].values[:config.exp.top_k_genes]))
-        else:
-            messages_list = prompt.format(query=meta_text)
-        # run it as a separate function to see clear trace on weave
-        annotations =  generate_text_annotation(messages_list)
-        print(annotations)
+    for i, (x, obs, var, source_id) in tqdm(enumerate(dataset)):
+        with weave.attributes({
+            "source_id": source_id,
+            "model": config.exp.model,
+            "temperature": config.exp.temperature,
+            "top_k_genes": config.exp.top_k_genes,
+            "dataset": config.dataset.h5ad_dir,
+            "n_files": config.dataset.n_files,
+            'n_rows_per_file': config.dataset.n_rows_per_file,
+            'idx': i,
+        }):
+            tokenized_cell = model.tokenize_single_cell(x[None, :], obs, var)
+            meta_text = metadata.get_metadata(obs, var, source_id)
+            if "top_k_genes" in prompt.input_variables:
+                messages_list = prompt.format(query=meta_text, top_k_genes=", ".join(tokenized_cell[0].values[:config.exp.top_k_genes]))
+            else:
+                messages_list = prompt.format(query=meta_text)
+            # run it as a separate function to see clear trace on weave
+            annotations =  generate_text_annotation(messages_list)
+            print(annotations)

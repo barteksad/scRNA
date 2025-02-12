@@ -23,4 +23,8 @@ class SingleCellDataset(Dataset):
         obs = data.obs.iloc[row_idx][self.obs_cols]
         var = data.var
         x = data.X[row_idx]
-        return x, obs, var
+
+        file_name = os.path.basename(self.files[file_idx])
+        source_id = file_name.split(".")[0]
+
+        return x, obs, var, source_id
