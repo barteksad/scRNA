@@ -12,7 +12,13 @@ pip install -r requirements.txt
 
 Copy `.env.template` as `.env` and fill in the values
 
+# NEW Data
+you can download the data from google drive
+```
+https://drive.google.com/file/d/1cGZDNnsqCe0GGK5Qs80fV4kccc9k2-uW/view?usp=sharing
+```
 
+# OLD
 The `data` folder is linked to shared folder `local_storage_1` which is available in the file system on entrophy for slurm sessions (so not on access node) under `/local_storage_1/bs429589/sc_rna/data`
 
 Run single cell text annotations with llm
