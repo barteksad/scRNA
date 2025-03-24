@@ -36,11 +36,19 @@ from transformers.utils import is_tf_available, is_torch_available, logging, to_
 from transformers.utils.generic import _is_tensorflow, _is_torch
 from transformers.file_utils import is_datasets_available, is_sagemaker_dp_enabled
 from datasets import load_from_disk
-from transformers import BertConfig, BertForMaskedLM, BertForNextSentencePrediction, BertForPreTraining, TrainingArguments, BertModel, AutoModel
+from transformers import (
+    BertConfig,
+    BertForMaskedLM,
+    BertForNextSentencePrediction,
+    BertForPreTraining,
+    TrainingArguments,
+    BertModel,
+    AutoModel,
+)
 from datasets import Dataset
 
 
-from typing import Any, Callable, Dict, List, NewType, Optional, Tuple, Union # 追加
+from typing import Any, Callable, Dict, List, NewType, Optional, Tuple, Union  # 追加
 
 
 from geneformer import GeneformerPretrainer
@@ -54,42 +62,38 @@ torch.manual_seed(seed_val)
 torch.cuda.manual_seed_all(seed_val)
 
 
-
-def main(**kwargs) :
-
-    # setting 
+def main(**kwargs):
+    # setting
     mouse_geneformer_flag = kwargs.pop("mouse_geneformer_flag")
     use_pretrained = kwargs.pop("use_pretrained")
     change_dropout_rate = kwargs.pop("change_dropout_rate")
-
 
     # set local time/directories
     timezone = pytz.timezone("Asia/Tokyo")
     rootdir = "/path/to/root/directory"
 
-
     # set model parameters
     # model type
-    model_type = "bert"                 # (default: bert)
+    model_type = "bert"  # (default: bert)
     # Pre text task
-    task = "MLM"                        # (choice pretext tasks MLM)
+    task = "MLM"  # (choice pretext tasks MLM)
     # max input size
-    max_input_size = 2**11              # (default: 2**11 = 2048) 
+    max_input_size = 2**11  # (default: 2**11 = 2048)
     # number of layers
-    num_layers = 6                      # (default: 6)
+    num_layers = 6  # (default: 6)
     # number of attention heads
-    num_attn_heads = 4                  # (default: 4)
+    num_attn_heads = 4  # (default: 4)
     # number of embedding dimensions
-    num_embed_dim = 256                 # (default: 256)
+    num_embed_dim = 256  # (default: 256)
     # intermediate size
-    intermed_size = num_embed_dim * 2   # (default: num_embed_dim * 2)
+    intermed_size = num_embed_dim * 2  # (default: num_embed_dim * 2)
     # activation function
-    activ_fn = "silu"                   # (default: relu)
+    activ_fn = "silu"  # (default: relu)
     # initializer range, layer norm, dropout
-    initializer_range = 0.02            # (default: 0.02)
-    layer_norm_eps = 1e-12              # (default: 1e-12)
-    attention_probs_dropout_prob = 0.02 # (default: 0.02)
-    hidden_dropout_prob = 0.02          # (default: 0.02)
+    initializer_range = 0.02  # (default: 0.02)
+    layer_norm_eps = 1e-12  # (default: 1e-12)
+    attention_probs_dropout_prob = 0.02  # (default: 0.02)
+    hidden_dropout_prob = 0.02  # (default: 0.02)
 
     # model configuration
     config = {
@@ -107,38 +111,38 @@ def main(**kwargs) :
         # "pad_token_id": token_dictionary.get("<pad>"),
         # "vocab_size": len(token_dictionary),  # genes+special_tokens (<mask> and <pad> and so on... tokens)
     }
-    
+
     # check the config if you use geneformer.
-    if mouse_geneformer_flag == False :
-        if task == "MLM" :
+    if mouse_geneformer_flag == False:
+        if task == "MLM":
             pass
-        else :
+        else:
             print("geneformer doesn't train by {} task.".format(task))
             print("please choice MLM task.")
             sys.exit(1)
-    else :
+    else:
         pass
 
     # set training parameters
     # total number of examples in Genecorpus-30M after QC filtering:
-    #　(default: 27_406_208) genecorpus-30M:27_406_208, mouse-genecorups-20M_data1-v2:21_332_982
+    # (default: 27_406_208) genecorpus-30M:27_406_208, mouse-genecorups-20M_data1-v2:21_332_982
     num_examples = 21_332_982
     # number gpus
-    num_gpus = 8                # (default: 12)
+    num_gpus = 8  # (default: 12)
     # batch size for training and eval
-    geneformer_batch_size = 12   # (default: 12)
+    geneformer_batch_size = 12  # (default: 12)
     # max learning rate
-    max_lr = 1e-3               # (default: 1e-3)
+    max_lr = 1e-3  # (default: 1e-3)
     # learning schedule
-    lr_schedule_fn = "cosine"   # (default: linear)
+    lr_schedule_fn = "cosine"  # (default: linear)
     # warmup steps
-    warmup_steps = 10_000       # (default: 10_000)
+    warmup_steps = 10_000  # (default: 10_000)
     # number of epochs
-    epochs = 10                 # (default: 3)
+    epochs = 10  # (default: 3)
     # optimizer
-    optimizer = "adamw_torch"         # (default: adamw)
+    optimizer = "adamw_torch"  # (default: adamw)
     # weight_decay
-    weight_decay = 0.001        # (default: 0.001)
+    weight_decay = 0.001  # (default: 0.001)
 
     # training args
     training_args = {
@@ -153,84 +157,92 @@ def main(**kwargs) :
         "per_device_train_batch_size": geneformer_batch_size,
         "num_train_epochs": epochs,
         "save_strategy": "steps",
-        "save_steps": np.floor(num_examples / geneformer_batch_size / 8),  # 8 saves per epoch
+        "save_steps": np.floor(
+            num_examples / geneformer_batch_size / 8
+        ),  # 8 saves per epoch
         "logging_steps": 3,
-        "label_names": ["labels"] if task=="MLM" else ["next_sentence_label"] if task=="NSP" else ["labels", "next_sentence_label"] if task=="BERT" else ["labels"],
+        "label_names": ["labels"]
+        if task == "MLM"
+        else ["next_sentence_label"]
+        if task == "NSP"
+        else ["labels", "next_sentence_label"]
+        if task == "BERT"
+        else ["labels"],
     }
 
     # check the config if you use geneformer.
-    if mouse_geneformer_flag == False and task == "MLM" :
-        if num_examples == 27_406_208 :
+    if mouse_geneformer_flag == False and task == "MLM":
+        if num_examples == 27_406_208:
             pass
-        else :
+        else:
             print("you misstake genecorpus-30M cells.")
             print("please choice 27_406_208.")
             sys.exit(1)
-    else :
+    else:
         pass
 
-
     # Load datasets
-    if mouse_geneformer_flag == True :
+    if mouse_geneformer_flag == True:
         dataset_version = "-n1"
         print("dataset_version: {}".format(dataset_version))
-        if dataset_version == "-n1" :
+        if dataset_version == "-n1":
             dataset_path = "/path/to/MLM-re_All_mouse_tokenize_dataset.dataset"
-            dataset_length_path = "/path/to/MLM-re_All_mouse_tokenize_dataset_length.pkl"
+            dataset_length_path = (
+                "/path/to/MLM-re_All_mouse_tokenize_dataset_length.pkl"
+            )
             token_dictionary_path = "/path/to/MLM-re_token_dictionary_v1.pkl"
-                
-        else :
-            print("select tasks in MLM right or select total cells (num_examples) right.")
+
+        else:
+            print(
+                "select tasks in MLM right or select total cells (num_examples) right."
+            )
             sys.exit(1)
-    
-    elif mouse_geneformer_flag == False :
+
+    elif mouse_geneformer_flag == False:
         dataset_path = "/path/to/genecurpus_30M_2048.dataset"
         dataset_length_path = "/path/to/genecorpus_30M_2048_lengths.pkl"
         token_dictionary_path = "/path/to/token_dictionary_human_myocardial-covid19-ctchuman_mouse_cop1ko-easy-hard.pkl"
-        
-    else :
+
+    else:
         print("select organism mouse or human")
         sys.exit(1)
-    
-    train_dataset=load_from_disk(dataset_path)
+
+    train_dataset = load_from_disk(dataset_path)
 
     # Load token directory
     with open(token_dictionary_path, "rb") as fp:
         token_dictionary = pickle.load(fp)
-    
-    
+
     # Add config
     config["pad_token_id"] = token_dictionary.get("<pad>")
     config["vocab_size"] = len(token_dictionary)
 
-
     # Using pretrain model or not using pretrain model
-    if use_pretrained == False :
+    if use_pretrained == False:
         use_or_not_use = "-NUse"
-    else :
+    else:
         use_or_not_use = "-Use"
-    
+
     # Check the config if you use MLM task.
-    if mouse_geneformer_flag == False and task == "MLM" and num_examples == 27_406_208 :
+    if mouse_geneformer_flag == False and task == "MLM" and num_examples == 27_406_208:
         if use_or_not_use == "-NUse":
             pass
-        else :
+        else:
             print("geneformer doesn't use pretrained model.")
             print("please choice 'False' in the use_pretrained.")
             sys.exit(1)
-    else :
+    else:
         pass
-    
-    
+
     # Generate saving path of model and logdata
     current_date = datetime.datetime.now(tz=timezone)
     datestamp = f"{str(current_date.year)[-2:]}{current_date.month:02d}{current_date.day:02d}_{current_date.strftime('%X').replace(':','')}"
-    if mouse_geneformer_flag == True :
+    if mouse_geneformer_flag == True:
         run_name = f"{datestamp}_mouse-geneformer_PM{use_or_not_use}_20M_DV{dataset_version}_T{task}_L{num_layers}_emb{num_embed_dim}_SL{max_input_size}_E{epochs}_B{geneformer_batch_size}_LR{max_lr}_LS{lr_schedule_fn}_WU{warmup_steps}_DR{hidden_dropout_prob}_ACT{activ_fn}_O{optimizer}_DS{num_gpus}"
-    else :
+    else:
         run_name = f"{datestamp}_geneformer_PM{use_or_not_use}_30M_DV{dataset_version}_T{task}_L{num_layers}_emb{num_embed_dim}_SL{max_input_size}_E{epochs}_B{geneformer_batch_size}_LR{max_lr}_LS{lr_schedule_fn}_WU{warmup_steps}_DR{hidden_dropout_prob}_ACT{activ_fn}_O{optimizer}_DS{num_gpus}"
     training_output_dir = f"{rootdir}/models/{run_name}/"
-    logging_dir = f"{rootdir}/runs/{run_name}/"   
+    logging_dir = f"{rootdir}/runs/{run_name}/"
     model_output_dir = os.path.join(training_output_dir, "models/")
 
     # ensure not overwriting previously saved model
@@ -242,30 +254,29 @@ def main(**kwargs) :
     subprocess.call(f"mkdir {training_output_dir}", shell=True)
     subprocess.call(f"mkdir {model_output_dir}", shell=True)
 
-
     # Add training args
     training_args["output_dir"] = training_output_dir
     training_args["logging_dir"] = logging_dir
 
     # Generate training_args
     training_args = TrainingArguments(**training_args)
-    
-    
+
     print("Generate the Bert model!")
     # Generate BertConfig
     config = BertConfig(**config)
 
     # load model
-    if task == "MLM" :
-        model = BertForMaskedLM(config) # Masked Language Modeling (MLM)
-    else :
+    if task == "MLM":
+        model = BertForMaskedLM(config)  # Masked Language Modeling (MLM)
+    else:
         pass
-    
 
-    # model mode is train        
+    # model mode is train
     model = model.train()
 
-    pretrain_model_name = "mouse-Geneformer" if mouse_geneformer_flag==True else "Geneformer"
+    pretrain_model_name = (
+        "mouse-Geneformer" if mouse_geneformer_flag == True else "Geneformer"
+    )
     print("Starting {} training by {} task.".format(pretrain_model_name, task))
 
     # Define trainer
@@ -277,14 +288,14 @@ def main(**kwargs) :
         # file of lengths of each example cell (e.g. https://huggingface.co/datasets/ctheodoris/Genecorpus-30M/blob/main/genecorpus_30M_2048_lengths.pkl)
         example_lengths_file=dataset_length_path,
         token_dictionary=token_dictionary,
-        pretext_task = task,
+        pretext_task=task,
     )
 
     # Start training
     start_time = time()
-    if epochs == 0 :
+    if epochs == 0:
         pass
-    else :
+    else:
         trainer.train()
     print(f"Finished training Geneformer. Total tim: {time() - start_time}")
 
@@ -293,16 +304,13 @@ def main(**kwargs) :
     print(f"Saved the model: {model_output_dir}")
 
     # evaluate
-    #trainer.evaluate()
-    #print("Finished evaluating Geneformer.")
-
+    # trainer.evaluate()
+    # print("Finished evaluating Geneformer.")
 
     return 0
 
 
-
-if __name__ =="__main__" :
-
+if __name__ == "__main__":
     logger = logging.get_logger(__name__)
     EncodedInput = List[int]
     VERY_LARGE_INTEGER = int(
@@ -321,16 +329,17 @@ if __name__ =="__main__" :
     if version.parse(torch.__version__) >= version.parse("1.6"):
         _is_torch_generator_available = True
 
-    
-    # Flag of geneformer or mouse-Geneformer 
+    # Flag of geneformer or mouse-Geneformer
     mouse_flag = True
 
-    # Falg of using pretrained model or not using pretrained mode 
+    # Falg of using pretrained model or not using pretrained mode
     use_pretrained = False
 
     # change dropout rate
     change_dropout_rate = False
-    
-    main(mouse_geneformer_flag=mouse_flag, use_pretrained = use_pretrained, change_dropout_rate = change_dropout_rate)
 
-
+    main(
+        mouse_geneformer_flag=mouse_flag,
+        use_pretrained=use_pretrained,
+        change_dropout_rate=change_dropout_rate,
+    )

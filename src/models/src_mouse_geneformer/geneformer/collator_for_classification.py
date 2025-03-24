@@ -3,6 +3,7 @@ Geneformer collator for gene and cell classification.
 
 Huggingface data collator modified to accommodate single-cell transcriptomics data for gene and cell classification.
 """
+
 import numpy as np
 import torch
 import warnings
@@ -30,6 +31,7 @@ LARGE_INTEGER = int(
 
 # precollator functions
 
+
 class ExplicitEnum(Enum):
     """
     Enum with more explicit error message for missing values.
@@ -41,6 +43,7 @@ class ExplicitEnum(Enum):
             "%r is not a valid %s, please select one of %s"
             % (value, cls.__name__, str(list(cls._value2member_map_.keys())))
         )
+
 
 class TruncationStrategy(ExplicitEnum):
     """
@@ -54,7 +57,6 @@ class TruncationStrategy(ExplicitEnum):
     DO_NOT_TRUNCATE = "do_not_truncate"
 
 
-
 class PaddingStrategy(ExplicitEnum):
     """
     Possible values for the ``padding`` argument in :meth:`PreTrainedTokenizerBase.__call__`. Useful for tab-completion
@@ -64,7 +66,6 @@ class PaddingStrategy(ExplicitEnum):
     LONGEST = "longest"
     MAX_LENGTH = "max_length"
     DO_NOT_PAD = "do_not_pad"
-
 
 
 class TensorType(ExplicitEnum):
@@ -78,21 +79,24 @@ class TensorType(ExplicitEnum):
     NUMPY = "np"
     JAX = "jax"
 
-    
+
 class PrecollatorForGeneAndCellClassification(SpecialTokensMixin):
     mask_token = "<mask>"
     mask_token_id = token_dictionary.get("<mask>")
     pad_token = "<pad>"
     pad_token_id = token_dictionary.get("<pad>")
     padding_side = "right"
-    all_special_ids = [
-        token_dictionary.get("<mask>"),
-        token_dictionary.get("<pad>")
-    ]
+    all_special_ids = [token_dictionary.get("<mask>"), token_dictionary.get("<pad>")]
     model_input_names = ["input_ids"]
 
     def _get_padding_truncation_strategies(
-        self, padding=True, truncation=False, max_length=None, pad_to_multiple_of=None, verbose=True, **kwargs
+        self,
+        padding=True,
+        truncation=False,
+        max_length=None,
+        pad_to_multiple_of=None,
+        verbose=True,
+        **kwargs,
     ):
         """
         Find the correct padding/truncation strategy with backward compatibility for old arguments (truncation_strategy
@@ -105,7 +109,9 @@ class PrecollatorForGeneAndCellClassification(SpecialTokensMixin):
         # If you only set max_length, it activates truncation for max_length
         if max_length is not None and padding is False and truncation is False:
             if verbose:
-                if not self.deprecation_warnings.get("Truncation-not-explicitly-activated", False):
+                if not self.deprecation_warnings.get(
+                    "Truncation-not-explicitly-activated", False
+                ):
                     logger.warning(
                         "Truncation was not explicitly activated but `max_length` is provided a specific value, "
                         "please use `truncation=True` to explicitly truncate examples to max length. "
@@ -133,7 +139,9 @@ class PrecollatorForGeneAndCellClassification(SpecialTokensMixin):
                 padding_strategy = PaddingStrategy.MAX_LENGTH
         elif padding is not False:
             if padding is True:
-                padding_strategy = PaddingStrategy.LONGEST  # Default to pad to the longest sequence in the batch
+                padding_strategy = (
+                    PaddingStrategy.LONGEST
+                )  # Default to pad to the longest sequence in the batch
             elif not isinstance(padding, PaddingStrategy):
                 padding_strategy = PaddingStrategy(padding)
             elif isinstance(padding, PaddingStrategy):
@@ -173,7 +181,9 @@ class PrecollatorForGeneAndCellClassification(SpecialTokensMixin):
             if padding_strategy == PaddingStrategy.MAX_LENGTH:
                 if self.model_max_length > LARGE_INTEGER:
                     if verbose:
-                        if not self.deprecation_warnings.get("Asking-to-pad-to-max_length", False):
+                        if not self.deprecation_warnings.get(
+                            "Asking-to-pad-to-max_length", False
+                        ):
                             logger.warning(
                                 "Asking to pad to max_length but no maximum length is provided and the model has no predefined maximum length. "
                                 "Default to no padding."
@@ -186,18 +196,24 @@ class PrecollatorForGeneAndCellClassification(SpecialTokensMixin):
             if truncation_strategy != TruncationStrategy.DO_NOT_TRUNCATE:
                 if self.model_max_length > LARGE_INTEGER:
                     if verbose:
-                        if not self.deprecation_warnings.get("Asking-to-truncate-to-max_length", False):
+                        if not self.deprecation_warnings.get(
+                            "Asking-to-truncate-to-max_length", False
+                        ):
                             logger.warning(
                                 "Asking to truncate to max_length but no maximum length is provided and the model has no predefined maximum length. "
                                 "Default to no truncation."
                             )
-                        self.deprecation_warnings["Asking-to-truncate-to-max_length"] = True
+                        self.deprecation_warnings[
+                            "Asking-to-truncate-to-max_length"
+                        ] = True
                     truncation_strategy = TruncationStrategy.DO_NOT_TRUNCATE
                 else:
                     max_length = self.model_max_length
 
         # Test if we have a padding token
-        if padding_strategy != PaddingStrategy.DO_NOT_PAD and (not self.pad_token or self.pad_token_id < 0):
+        if padding_strategy != PaddingStrategy.DO_NOT_PAD and (
+            not self.pad_token or self.pad_token_id < 0
+        ):
             raise ValueError(
                 "Asking to pad but the tokenizer does not have a padding token. "
                 "Please select a token to use as `pad_token` `(tokenizer.pad_token = tokenizer.eos_token e.g.)` "
@@ -228,7 +244,7 @@ class PrecollatorForGeneAndCellClassification(SpecialTokensMixin):
             Dict[str, List[EncodedInput]],
             List[Dict[str, EncodedInput]],
         ],
-        class_type, # options: "gene" or "cell"
+        class_type,  # options: "gene" or "cell"
         padding: Union[bool, str, PaddingStrategy] = True,
         max_length: Optional[int] = None,
         pad_to_multiple_of: Optional[int] = None,
@@ -291,8 +307,13 @@ class PrecollatorForGeneAndCellClassification(SpecialTokensMixin):
         """
         # If we have a list of dicts, let's convert it in a dict of lists
         # We do this to allow using this method as a collate_fn function in PyTorch Dataloader
-        if isinstance(encoded_inputs, (list, tuple)) and isinstance(encoded_inputs[0], (dict, BatchEncoding)):
-            encoded_inputs = {key: [example[key] for example in encoded_inputs] for key in encoded_inputs[0].keys()}
+        if isinstance(encoded_inputs, (list, tuple)) and isinstance(
+            encoded_inputs[0], (dict, BatchEncoding)
+        ):
+            encoded_inputs = {
+                key: [example[key] for example in encoded_inputs]
+                for key in encoded_inputs[0].keys()
+            }
 
         # The model's main input name, usually `input_ids`, has be passed for padding
         if self.model_input_names[0] not in encoded_inputs:
@@ -386,7 +407,7 @@ class PrecollatorForGeneAndCellClassification(SpecialTokensMixin):
     def _pad(
         self,
         encoded_inputs: Union[Dict[str, EncodedInput], BatchEncoding],
-        class_type, # options: "gene" or "cell"
+        class_type,  # options: "gene" or "cell"
         max_length: Optional[int] = None,
         padding_strategy: PaddingStrategy = PaddingStrategy.LONGEST,
         pad_to_multiple_of: Optional[int] = None,
@@ -422,46 +443,73 @@ class PrecollatorForGeneAndCellClassification(SpecialTokensMixin):
         if padding_strategy == PaddingStrategy.LONGEST:
             max_length = len(required_input)
 
-        if max_length is not None and pad_to_multiple_of is not None and (max_length % pad_to_multiple_of != 0):
+        if (
+            max_length is not None
+            and pad_to_multiple_of is not None
+            and (max_length % pad_to_multiple_of != 0)
+        ):
             max_length = ((max_length // pad_to_multiple_of) + 1) * pad_to_multiple_of
 
-        needs_to_be_padded = padding_strategy != PaddingStrategy.DO_NOT_PAD and len(required_input) != max_length
+        needs_to_be_padded = (
+            padding_strategy != PaddingStrategy.DO_NOT_PAD
+            and len(required_input) != max_length
+        )
 
         if needs_to_be_padded:
             difference = max_length - len(required_input)
             if self.padding_side == "right":
                 if return_attention_mask:
-                    encoded_inputs["attention_mask"] = [1] * len(required_input) + [0] * difference
+                    encoded_inputs["attention_mask"] = [1] * len(required_input) + [
+                        0
+                    ] * difference
                 if "token_type_ids" in encoded_inputs:
                     encoded_inputs["token_type_ids"] = (
-                        encoded_inputs["token_type_ids"] + [self.pad_token_type_id] * difference
+                        encoded_inputs["token_type_ids"]
+                        + [self.pad_token_type_id] * difference
                     )
                 if "special_tokens_mask" in encoded_inputs:
-                    encoded_inputs["special_tokens_mask"] = encoded_inputs["special_tokens_mask"] + [1] * difference
-                encoded_inputs[self.model_input_names[0]] = required_input + [self.pad_token_id] * difference
+                    encoded_inputs["special_tokens_mask"] = (
+                        encoded_inputs["special_tokens_mask"] + [1] * difference
+                    )
+                encoded_inputs[self.model_input_names[0]] = (
+                    required_input + [self.pad_token_id] * difference
+                )
                 if class_type == "gene":
-                    encoded_inputs["labels"] = encoded_inputs["labels"] + [-100] * difference
+                    encoded_inputs["labels"] = (
+                        encoded_inputs["labels"] + [-100] * difference
+                    )
             elif self.padding_side == "left":
                 if return_attention_mask:
-                    encoded_inputs["attention_mask"] = [0] * difference + [1] * len(required_input)
+                    encoded_inputs["attention_mask"] = [0] * difference + [1] * len(
+                        required_input
+                    )
                 if "token_type_ids" in encoded_inputs:
-                    encoded_inputs["token_type_ids"] = [self.pad_token_type_id] * difference + encoded_inputs[
-                        "token_type_ids"
-                    ]
+                    encoded_inputs["token_type_ids"] = [
+                        self.pad_token_type_id
+                    ] * difference + encoded_inputs["token_type_ids"]
                 if "special_tokens_mask" in encoded_inputs:
-                    encoded_inputs["special_tokens_mask"] = [1] * difference + encoded_inputs["special_tokens_mask"]
-                encoded_inputs[self.model_input_names[0]] = [self.pad_token_id] * difference + required_input
+                    encoded_inputs["special_tokens_mask"] = [
+                        1
+                    ] * difference + encoded_inputs["special_tokens_mask"]
+                encoded_inputs[self.model_input_names[0]] = [
+                    self.pad_token_id
+                ] * difference + required_input
                 if class_type == "gene":
-                    encoded_inputs["labels"] = [-100] * difference + encoded_inputs["labels"]
+                    encoded_inputs["labels"] = [-100] * difference + encoded_inputs[
+                        "labels"
+                    ]
             else:
                 raise ValueError("Invalid padding strategy:" + str(self.padding_side))
         elif return_attention_mask and "attention_mask" not in encoded_inputs:
             encoded_inputs["attention_mask"] = [1] * len(required_input)
-        
+
         return encoded_inputs
 
     def get_special_tokens_mask(
-        self, token_ids_0: List[int], token_ids_1: Optional[List[int]] = None, already_has_special_tokens: bool = False
+        self,
+        token_ids_0: List[int],
+        token_ids_1: Optional[List[int]] = None,
+        already_has_special_tokens: bool = False,
     ) -> List[int]:
         """
         Retrieves sequence ids from a token list that has no special tokens added. This method is called when adding
@@ -485,11 +533,15 @@ class PrecollatorForGeneAndCellClassification(SpecialTokensMixin):
 
         all_special_ids = self.all_special_ids  # cache the property
 
-        special_tokens_mask = [1 if token in all_special_ids else 0 for token in token_ids_0]
+        special_tokens_mask = [
+            1 if token in all_special_ids else 0 for token in token_ids_0
+        ]
 
         return special_tokens_mask
 
-    def convert_tokens_to_ids(self, tokens: Union[str, List[str]]) -> Union[int, List[int]]:
+    def convert_tokens_to_ids(
+        self, tokens: Union[str, List[str]]
+    ) -> Union[int, List[int]]:
         """
         Converts a token string (or a sequence of tokens) in a single integer id (or a sequence of ids), using the
         vocabulary.
@@ -521,6 +573,7 @@ class PrecollatorForGeneAndCellClassification(SpecialTokensMixin):
 
 # collator functions
 
+
 class DataCollatorForGeneClassification(DataCollatorForTokenClassification):
     """
     Data collator that will dynamically pad the inputs received, as well as the labels.
@@ -546,13 +599,15 @@ class DataCollatorForGeneClassification(DataCollatorForTokenClassification):
             The id to use when padding the labels (-100 will be automatically ignore by PyTorch loss functions).
     """
 
-    tokenizer = PrecollatorForGeneAndCellClassification() # paddingしたり、特殊トークンを埋め込んだりしているやつ
+    tokenizer = (
+        PrecollatorForGeneAndCellClassification()
+    )  # paddingしたり、特殊トークンを埋め込んだりしているやつ
     class_type = "gene"
     padding: Union[bool, str, PaddingStrategy] = True
     max_length: Optional[int] = None
     pad_to_multiple_of: Optional[int] = None
     label_pad_token_id: int = -100
-    
+
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(
             tokenizer=self.tokenizer,
@@ -560,11 +615,17 @@ class DataCollatorForGeneClassification(DataCollatorForTokenClassification):
             max_length=self.max_length,
             pad_to_multiple_of=self.pad_to_multiple_of,
             label_pad_token_id=self.label_pad_token_id,
-            *args, **kwargs)
+            *args,
+            **kwargs,
+        )
 
     def _prepare_batch(self, features):
         label_name = "label" if "label" in features[0].keys() else "labels"
-        labels = [feature[label_name] for feature in features] if label_name in features[0].keys() else None
+        labels = (
+            [feature[label_name] for feature in features]
+            if label_name in features[0].keys()
+            else None
+        )
         batch = self.tokenizer.pad(
             features,
             class_type=self.class_type,
@@ -574,22 +635,20 @@ class DataCollatorForGeneClassification(DataCollatorForTokenClassification):
             return_tensors="pt",
         )
         return batch
-    
+
     def __call__(self, features):
         batch = self._prepare_batch(features)
 
         batch = {k: torch.tensor(v, dtype=torch.int64) for k, v in batch.items()}
         return batch
 
-    
-class DataCollatorForCellClassification(DataCollatorForGeneClassification):
 
+class DataCollatorForCellClassification(DataCollatorForGeneClassification):
     class_type = "cell"
 
     def _prepare_batch(self, features):
-        
         batch = super()._prepare_batch(features)
-        
+
         # Special handling for labels.
         # Ensure that tensor is created with the correct type
         # (it should be automatically the case, but let's make sure of it.)
@@ -597,8 +656,12 @@ class DataCollatorForCellClassification(DataCollatorForGeneClassification):
         # バッチ単位のデータセットを作っている
         first = features[0]
         if "label" in first and first["label"] is not None:
-            label = first["label"].item() if isinstance(first["label"], torch.Tensor) else first["label"]
+            label = (
+                first["label"].item()
+                if isinstance(first["label"], torch.Tensor)
+                else first["label"]
+            )
             dtype = torch.long if isinstance(label, int) else torch.float
             batch["labels"] = torch.tensor([f["label"] for f in features], dtype=dtype)
-            
+
         return batch
