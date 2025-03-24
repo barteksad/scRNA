@@ -1,6 +1,5 @@
 _target_: datasets.SingleCellDataset
-# h5ad_dir: /local_storage_1/bs429589/sc_rna/data/mouse/datasets/scCompass
-h5ad_dir: /home/barteksad/scRNA/data/mouse/datasets/scCompass
+h5ad_dir: data/mouse/datasets/scCompass
 n_files: 1
 n_rows_per_file: 1
 obs_cols: 

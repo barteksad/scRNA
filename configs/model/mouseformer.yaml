@@ -1,9 +1,6 @@
 _target_: models.MouseFormer
-gene_mapping_file: "/home/barteksad/scRNA/data/mouse/weights/mouse-Geneformer/MLM-re_token_dictionary_v1_GeneSymbol_to_EnsemblID.pkl"
-gene_median_file: "/home/barteksad/scRNA/data/mouse/weights/mouse-Geneformer/MLM-re_token_dictionary_v1.pkl"
-token_dictionary_file: "/home/barteksad/scRNA/data/mouse/weights/mouse-Geneformer/mouse_gene_median_dictionary.pkl"
-# gene_mapping_file: "/local_storage_1/bs429589/sc_rna/data/mouse/weights/mouse-Geneformer/MLM-re_token_dictionary_v1_GeneSymbol_to_EnsemblID.pkl"
-# gene_median_file: "/local_storage_1/bs429589/sc_rna/data/mouse/weights/mouse-Geneformer/MLM-re_token_dictionary_v1.pkl"
-# token_dictionary_file: "/local_storage_1/bs429589/sc_rna/data/mouse/weights/mouse-Geneformer/mouse_gene_median_dictionary.pkl"
+gene_mapping_file: data/mouse/weights/mouse-Geneformer/MLM-re_token_dictionary_v1_GeneSymbol_to_EnsemblID.pkl
+gene_median_file: data/mouse/weights/mouse-Geneformer/MLM-re_token_dictionary_v1.pkl
+token_dictionary_file: data/mouse/weights/mouse-Geneformer/mouse_gene_median_dictionary.pkl
 target_sum: 10_000
 chunk_size: 512

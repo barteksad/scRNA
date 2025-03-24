@@ -1,0 +1,4 @@
+_target_: langchain_google_genai.ChatGoogleGenerativeAI
+model: ${exp.model}
+temperature: ${exp.temperature}
+max_tokens: null
