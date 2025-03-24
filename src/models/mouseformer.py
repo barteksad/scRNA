@@ -1,9 +1,11 @@
-from .base import BaseSingleCellModel
-import pandas as pd
-from typing import List
 import pickle
+from typing import List
+
 import numpy as np
+import pandas as pd
 import scipy.sparse as sp
+
+from .base import BaseSingleCellModel
 
 
 def rank_genes(gene_vector, gene_tokens, gene_names):

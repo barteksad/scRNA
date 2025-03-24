@@ -1,6 +1,7 @@
 from typing import List
-import pandas as pd
+
 import bs4
+import pandas as pd
 import requests
 
 
