@@ -1,0 +1,3 @@
+_target_: langchain_groq.ChatGroq
+model_name: ${exp.model}
+temperature: ${exp.temperature}

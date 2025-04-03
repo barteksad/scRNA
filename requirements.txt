@@ -10,3 +10,6 @@ pandas
 numpy
 scipy
 scanpy
+huggingface_hub
+langchain_huggingface
+langchain_mistralai

@@ -1,0 +1,4 @@
+_target_: langchain_mistralai.ChatMistralAI
+model: ${exp.model}
+temperature: ${exp.temperature}
+max_tokens: null

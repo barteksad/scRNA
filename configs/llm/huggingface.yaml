@@ -1,0 +1,4 @@
+_target_: langchain_huggingface.HuggingFaceEndpoint
+repo_id: ${exp.model}
+temperature: ${exp.temperature}
+max_tokens: null

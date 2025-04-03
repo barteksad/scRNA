@@ -9,13 +9,14 @@ source ./env/bin/activate
 
 export HYDRA_FULL_ERROR=1
 
-# openai o1 doesn't use system prompt and it only accepts temperature = 1
 srun python src/main.py \
     --config-name single_cell_to_text \
     llm=google \
-    exp.model=gemini-2.0-flash \
+    exp.model=gemma-3-27b-it \
     prompt=experimental_1 \
     exp.temperature=1.0 \
     dataset=cell_x_gene \
-    dataset.n_rows_per_file=1 \
+    dataset.n_rows_per_file=10 \
     dataset.n_files=1
+
+# gemini-2.0-flash
