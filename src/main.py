@@ -1,8 +1,10 @@
 import dotenv
 import hydra
 from hydra.utils import call
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
+import torch
 
+OmegaConf.register_resolver("torch_dtype", lambda name: getattr(torch, name))
 
 @hydra.main(version_base=None, config_path="../configs")
 def main(config: DictConfig):

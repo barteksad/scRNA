@@ -1,0 +1,9 @@
+_target_: langchain_huggingface.llms.HuggingFacePipeline
+pipeline:
+  _target_: transformers.pipeline
+  task: "text-generation"
+  model: ${exp.model}
+  device_map: auto
+  torch_dtype: ${torch_dtype:bfloat16}
+  max_new_tokens: 1024
+  temperature: 0.8

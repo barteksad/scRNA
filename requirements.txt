@@ -13,3 +13,8 @@ scanpy
 huggingface_hub
 langchain_huggingface
 langchain_mistralai
+transformers
+torch
+bs4
+huggingface_hub[cli]
+accelerate
