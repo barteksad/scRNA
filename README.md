@@ -27,5 +27,10 @@ Copy `.env.template` as `.env` and fill in the values
 # NEW Data
 you can download the data from google drive
 ```
-https://drive.google.com/file/d/1cGZDNnsqCe0GGK5Qs80fV4kccc9k2-uW/view?usp=sharing
+https://drive.google.com/file/d/1-2xpFnik-0pPGFkpxw9hym05zLtwYlB4/view?usp=sharing
+```
+
+```
+Sample text data csv file
+https://docs.google.com/spreadsheets/d/1jr-df0TZZsK165rtTvKoUmQSGxUf6WEq_Ccqw0mevwA/edit?usp=sharing
 ```
