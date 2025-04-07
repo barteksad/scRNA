@@ -1,5 +1,6 @@
 from typing import Any
 
+import numpy as np
 import wandb
 from omegaconf import DictConfig
 from torch.nn import TransformerEncoderLayer, TransformerEncoder
@@ -103,7 +104,7 @@ class GenomicsCLIP(nn.Module):
         # Use [CLS] token representation
         return outputs.last_hidden_state[:, 0, :]
 
-    def forward(self, batch: dict[str, torch.Tensor]) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, batch: dict[str, list]) -> tuple[torch.Tensor, torch.Tensor]:
         # Encode both modalities
         cell_tokens = torch.stack([self.tokenize_cells(cell) for cell in batch['cell_data']])
         text_tokens, attention_masks = zip(*[self.tokenize_text(text) for text in batch['text']])
@@ -131,6 +132,29 @@ class GenomicsCLIP(nn.Module):
         logits_per_text = logits_per_cell.t()
 
         return logits_per_cell, logits_per_text
+
+    def predict_similarity_matrix(self, batch: dict[str, list]) -> torch.Tensor:
+        self.eval()
+        with torch.no_grad():
+            _, logits_per_text = self.forward(batch)
+            similarity_matrix = logits_per_text / self.logit_scale.exp()
+
+        return similarity_matrix
+
+    def predict_best_matches(self, batch: dict[str, list]) -> torch.Tensor:
+        similarity_matrix = self.predict_similarity_matrix(batch)
+        return similarity_matrix.argmax(dim=1)
+
+    def accuracy_paired_batch(self, batch: dict[str, list]) -> float:
+        assert len(batch['cell_data']) == len(batch['text']) # here we assume the batch contains paired text-cells
+        y_hat = self.predict_best_matches(batch)
+        y_true = torch.arange(len(batch['cell_data']))
+
+        return self.accuracy(y_hat, y_true)
+
+    @staticmethod
+    def accuracy(y_hat: torch.Tensor, y_true: torch.Tensor) -> float:
+        return (y_hat == y_true).float().mean().item()
 
     def tokenize_text(self, text):
         """Tokenize raw text"""
@@ -181,9 +205,11 @@ def train_clip(config: DictConfig):
         "lr": 5e-5,
         "min_lr": 1e-6,
         "weight_decay": 0.01,
-        "num_workers": 8,
+        "num_workers": 0,
         "model_save_path": "best_genomics_clip.pt",
-        "use_wandb": False
+        "use_wandb": True,
+        "log_accuracy": True,
+        "wandb_project": "CLIP"
     }
 
     train_genomics_clip(clip_model, dataset, None, config)
@@ -196,11 +222,8 @@ def train_genomics_clip(
         config: dict,
         device: str = "cuda" if torch.cuda.is_available() else "cpu"
 ):
-    # Initialize logging (optional)
     if config.get("use_wandb", False):
-        wandb.init(project="genomics-clip", config=config)
-
-    # Create data loaders with custom collate_fn
+        wandb.init(project=config.get("wandb_project", ""), config=config)
 
     train_loader = DataLoader(
         train_dataset,
@@ -244,6 +267,7 @@ def train_genomics_clip(
         train_loss = 0.0
 
         pbar = tqdm(train_loader, desc=f"Epoch {epoch + 1}")
+        train_accuracy = []
         for batch in pbar:
             optimizer.zero_grad()
             logits_per_cell, logits_per_text = model(batch)
@@ -263,28 +287,43 @@ def train_genomics_clip(
                     "train/loss": loss.item(),
                     "train/lr": scheduler.get_last_lr()[0],
                     "train/temp": model.logit_scale.exp().item()
-                })
+                }, commit=False)
+
+            if config.get('log_accuracy', False):
+                train_accuracy.append(model.accuracy_paired_batch(batch))
+
         avg_train_loss = train_loss / len(train_loader)
+        print(f"Epoch {epoch + 1}: Train Loss = {avg_train_loss:.4f}")
+
+        avg_train_accuracy = 0.0
+        if config.get('log_accuracy', False):
+            avg_train_accuracy = np.mean(train_accuracy)
+            print(f"Epoch {epoch + 1}: Train Accuracy = {avg_train_accuracy:.4f}")
 
         # Validation phase
-        avg_val_loss = None
+        avg_val_loss, avg_val_accuracy = 0.0, 0.0
         if val_loader is not None:
             model.eval()
             val_loss = 0.0
             with torch.no_grad():
+                val_accuracy = []
                 for batch in val_loader:
                     logits_per_cell, logits_per_text = model(batch)
                     val_loss += clip_loss(logits_per_cell, logits_per_text).item()
+                    val_accuracy.append(model.accuracy_paired_batch(batch))
             avg_val_loss = val_loss / len(val_loader)
             print(f"Epoch {epoch + 1}: Val Loss = {avg_val_loss:.4f}")
+            if config.get('log_accuracy', False):
+                avg_val_accuracy = np.mean(val_accuracy)
+                print(f"Epoch {epoch + 1}: Val Accuracy = {avg_val_accuracy:.4f}")
 
-        print(f"Epoch {epoch + 1}: Train Loss = {avg_train_loss:.4f}")
-
-        if config.get("use_wandb", False):
-            wandb.log({
-                "epoch": epoch + 1,
-                "val/loss": avg_val_loss
-            })
+        wandb.log({
+            "train/epoch_loss": avg_train_loss,
+            "train/epoch_accuracy": avg_train_accuracy,
+            "val/epoch_loss": avg_val_loss,
+            "val/epoch_accuracy": avg_val_accuracy,
+            "epoch": epoch + 1,
+        })
 
         # Save best model
         if val_loader is not None and avg_val_loss < best_val_loss:
