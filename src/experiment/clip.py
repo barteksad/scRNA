@@ -1,19 +1,16 @@
-from typing import Any
-
 import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 import wandb
 from omegaconf import DictConfig
 from torch.nn import TransformerEncoderLayer, TransformerEncoder
 from torch.optim import AdamW
-import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+from transformers import BertModel, BertTokenizer
 
 from src.experiment.extract_text_annotation import get_components
-
-import torch
-import torch.nn as nn
-from transformers import BertModel, AutoTokenizer, BertTokenizer
 
 
 class GenomicsCLIP(nn.Module):
