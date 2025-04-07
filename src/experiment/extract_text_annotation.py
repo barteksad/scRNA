@@ -34,7 +34,7 @@ def extract_text_annotation(config: DictConfig):
     def generate_text_annotation(messages_list):
         return llm.invoke(messages_list)
 
-    for i, (x, obs, var, source_id) in tqdm(enumerate(dataset)):
+    for i, (_, x, obs, var, source_id) in tqdm(enumerate(dataset)):
         with weave.attributes(
             {
                 "source_id": source_id,
