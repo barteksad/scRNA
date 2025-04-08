@@ -7,7 +7,7 @@ from langchain_core.prompts import BaseChatPromptTemplate
 from omegaconf import DictConfig
 from tqdm import tqdm
 
-import utils
+from utils import preprocess_config, setup_weave
 from models import BaseSingleCellModel
 
 log = logging.getLogger(__name__)
@@ -24,8 +24,8 @@ def get_components(config):
 
 
 def extract_text_annotation(config: DictConfig):
-    utils.preprocess_config(config)
-    utils.setup_weave(config)
+    preprocess_config(config)
+    setup_weave(config)
     # utils.setup_wandb(config)
 
     dataset, metadata, prompt, llm, model = get_components(config)

@@ -41,13 +41,11 @@ class MouseFormer(BaseSingleCellModel):
         self.target_sum = target_sum
         self.chunk_size = chunk_size
 
-        base_path = os.getcwd()[:-3] # we run this script from src ...
-
-        with open(base_path + gene_mapping_file, "rb") as f:
+        with open(gene_mapping_file, "rb") as f:
             self.gene_mapping_dict = pickle.load(f)
-        with open(base_path + gene_median_file, "rb") as f:
+        with open(gene_median_file, "rb") as f:
             self.gene_median_dict = pickle.load(f)
-        with open(base_path + token_dictionary_file, "rb") as f:
+        with open(token_dictionary_file, "rb") as f:
             self.token_dict = pickle.load(f)
 
         # gene keys for full vocabulary

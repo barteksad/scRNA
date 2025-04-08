@@ -15,9 +15,9 @@ class SingleCellDataset(Dataset):
         self.n_files = n_files
         self.n_rows_per_file = n_rows_per_file
         self.obs_cols = obs_cols
-        self.files = glob.glob(os.path.join(os.getcwd()[:-3] + h5ad_dir, "*"))
+        self.files = glob.glob(os.path.join(h5ad_dir, "*"))
         self.data = [read_h5ad(file) for file in self.files]
-        self.descriptions = pd.read_csv(os.getcwd()[:-3] + descriptions_path)
+        self.descriptions = pd.read_csv(descriptions_path)
 
     def __len__(self):
         return self.n_files * self.n_rows_per_file
