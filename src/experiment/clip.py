@@ -77,7 +77,7 @@ class GenomicsCLIP(nn.Module):
         )
 
         # Temperature parameter
-        self.logit_scale = nn.Parameter(torch.ones([], device=self.device) * torch.log(torch.tensor(1 / 0.07, device=device)))
+        self.logit_scale = nn.Parameter(torch.ones([], device=device) * torch.log(torch.tensor(1 / 0.07, device=device)))
 
         self.device = device
 
@@ -201,7 +201,7 @@ def train_clip(config: DictConfig):
     print('starting clip training...')
     dataset, _, _, _, mouseformer = get_components(config)
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
-    clip_model = GenomicsCLIP(mouseformer, device = device)
+    clip_model = GenomicsCLIP(mouseformer, device=device)
     config =  {
         "batch_size": 64,
         "epochs": 50,
