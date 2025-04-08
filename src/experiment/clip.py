@@ -31,7 +31,9 @@ class GenomicsCLIP(nn.Module):
 
             # Projection config
             projection_dim: int = 256,
-            dropout: float = 0.1
+            dropout: float = 0.1,
+
+            device: str = "cpu"
     ):
         super().__init__()
         self.max_cell_tokens = max_cell_tokens
@@ -75,7 +77,9 @@ class GenomicsCLIP(nn.Module):
         )
 
         # Temperature parameter
-        self.logit_scale = nn.Parameter(torch.ones([]) * torch.log(torch.tensor(1 / 0.07)))
+        self.logit_scale = nn.Parameter(torch.ones([], device=self.device) * torch.log(torch.tensor(1 / 0.07, device=device)))
+
+        self.device = device
 
     def encode_cells(self, cell_tokens: torch.Tensor) -> torch.Tensor:
         """Process tokenized cell data through genomics encoder"""
@@ -145,7 +149,7 @@ class GenomicsCLIP(nn.Module):
     def accuracy_paired_batch(self, batch: dict[str, list]) -> float:
         assert len(batch['cell_data']) == len(batch['text']) # here we assume the batch contains paired text-cells
         y_hat = self.predict_best_matches(batch)
-        y_true = torch.arange(len(batch['cell_data']))
+        y_true = torch.arange(len(batch['cell_data']), device=self.device)
 
         return self.accuracy(y_hat, y_true)
 
@@ -168,10 +172,10 @@ class GenomicsCLIP(nn.Module):
         """Tokenize raw cell data"""
         x, obs, var = cell_data
         _, tokenized_cells = self.cell_tokenizer.tokenize_single_cell(x, obs, var)
-        positional_encoding = torch.tensor(tokenized_cells[0].fillna(0).astype(int).values, dtype=torch.int32)
+        positional_encoding = torch.tensor(tokenized_cells[0].fillna(0).astype(int).values, dtype=torch.int32, device=self.device)
 
         # Pad/truncate
-        cell_tokens = torch.zeros(self.max_cell_tokens, dtype=torch.int32)
+        cell_tokens = torch.zeros(self.max_cell_tokens, dtype=torch.int32, device=self.device)
         actual_length = min(len(positional_encoding), self.max_cell_tokens)
         cell_tokens[:actual_length] = positional_encoding[:actual_length]
         return cell_tokens
@@ -196,7 +200,8 @@ class GenomicsCLIP(nn.Module):
 def train_clip(config: DictConfig):
     print('starting clip training...')
     dataset, _, _, _, mouseformer = get_components(config)
-    clip_model = GenomicsCLIP(mouseformer)
+    device: str = "cuda" if torch.cuda.is_available() else "cpu"
+    clip_model = GenomicsCLIP(mouseformer, device = device)
     config =  {
         "batch_size": 64,
         "epochs": 50,
@@ -218,7 +223,6 @@ def train_genomics_clip(
         train_dataset,
         val_dataset,
         config: dict,
-        device: str = "cuda" if torch.cuda.is_available() else "cpu"
 ):
     if config.get("use_wandb", False):
         wandb.init(project=config.get("wandb_project", ""), config=config)
@@ -254,7 +258,7 @@ def train_genomics_clip(
 
     # Loss function (symmetric contrastive)
     def clip_loss(logits_per_cell, logits_per_text):
-        labels = torch.arange(logits_per_cell.size(0), device=device)
+        labels = torch.arange(logits_per_cell.size(0), device=model.device)
         cell_loss = F.cross_entropy(logits_per_cell, labels)
         text_loss = F.cross_entropy(logits_per_text, labels)
         return (cell_loss + text_loss) / 2
