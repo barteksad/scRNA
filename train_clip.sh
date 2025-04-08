@@ -1,6 +1,11 @@
+#!/bin/bash
+#SBATCH --job-name=clip_genomics
+#SBATCH --partition=common
+#SBATCH --gres=gpu:titanx:1
+#SBATCH --time=00:30:00
+#SBATCH --output=clip_genomics_log.txt
+
 
 export HYDRA_FULL_ERROR=1
-export OPENAI_API_KEY="xxx"
-
 source .venv/bin/activate
-.venv/bin/python src/clip.py
+PYTHONPATH=/home/pablo2811/scRNA /home/pablo2811/scRNA/.venv/bin/python /home/pablo2811/scRNA/src/experiment/clip.py
