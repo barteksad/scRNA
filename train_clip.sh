@@ -8,4 +8,4 @@
 
 export HYDRA_FULL_ERROR=1
 source .venv/bin/activate
-PYTHONPATH=/home/pablo2811/scRNA /home/pablo2811/scRNA/.venv/bin/python /home/pablo2811/scRNA/src/experiment/clip.py
+PYTHONPATH=/home/pablo2811/scRNA /home/pablo2811/scRNA/.venv/bin/python /home/pablo2811/scRNA/src/clip.py
