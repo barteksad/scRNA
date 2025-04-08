@@ -167,7 +167,7 @@ class GenomicsCLIP(nn.Module):
             truncation=True,
             max_length=self.max_text_tokens
         )
-        return encoding['input_ids'][0], encoding['attention_mask'][0]
+        return encoding['input_ids'][0].to(self.device), encoding['attention_mask'][0].to(self.device)
 
     def tokenize_cells(self, cell_data):
         """Tokenize raw cell data"""
