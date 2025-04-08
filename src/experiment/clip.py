@@ -55,7 +55,7 @@ class GenomicsCLIP(nn.Module):
         self.cell_tokenizer = mouseformer
 
         # ============= Text Encoder =============
-        self.text_encoder = BertModel.from_pretrained(text_model_name)
+        self.text_encoder = BertModel.from_pretrained(text_model_name).to(device)
         self.text_tokenizer = BertTokenizer.from_pretrained(text_model_name)
 
         # Freeze BERT
@@ -113,10 +113,6 @@ class GenomicsCLIP(nn.Module):
 
         text_tokens = torch.stack(text_tokens)
         attention_masks = torch.stack(attention_masks)
-
-        print(text_tokens.device)
-        print(cell_tokens.device)
-        print(attention_masks.device)
 
         cell_features = self.encode_cells(cell_tokens)
         text_features = self.encode_text({
