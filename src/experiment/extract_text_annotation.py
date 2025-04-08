@@ -7,8 +7,8 @@ from langchain_core.prompts import BaseChatPromptTemplate
 from omegaconf import DictConfig
 from tqdm import tqdm
 
-from utils import preprocess_config, setup_weave
-from models import BaseSingleCellModel
+from src.utils import preprocess_config, setup_weave
+from src.models import BaseSingleCellModel
 
 log = logging.getLogger(__name__)
 
