@@ -40,15 +40,16 @@ class GenomicsCLIP(nn.Module):
         self.max_text_tokens = max_text_tokens
 
         # ============= Genomics Encoder =============
-        self.cell_embedding = nn.Embedding(cell_vocab_size, cell_embed_dim)
-        self.cell_pos_embedding = nn.Parameter(torch.randn(1, max_cell_tokens, cell_embed_dim))
+        self.cell_embedding = nn.Embedding(cell_vocab_size, cell_embed_dim, device=device)
+        self.cell_pos_embedding = nn.Parameter(torch.randn(1, max_cell_tokens, cell_embed_dim, device=device))
 
         cell_encoder_layers = TransformerEncoderLayer(
             d_model=cell_embed_dim,
             nhead=cell_transformer_heads,
             dim_feedforward=cell_embed_dim * 4,
             dropout=dropout,
-            batch_first=True
+            batch_first=True,
+            device=device
         )
         self.cell_encoder = TransformerEncoder(cell_encoder_layers, cell_transformer_layers)
         self.cell_tokenizer = mouseformer
@@ -63,17 +64,17 @@ class GenomicsCLIP(nn.Module):
 
         # ============= Projection Heads =============
         self.cell_proj = nn.Sequential(
-            nn.Linear(cell_embed_dim, projection_dim),
+            nn.Linear(cell_embed_dim, projection_dim, device=device),
             nn.GELU(),
-            nn.LayerNorm(projection_dim),
-            nn.Linear(projection_dim, projection_dim)
+            nn.LayerNorm(projection_dim, device=device),
+            nn.Linear(projection_dim, projection_dim, device=device)
         )
 
         self.text_proj = nn.Sequential(
-            nn.Linear(self.text_encoder.config.hidden_size, text_proj_dim),
+            nn.Linear(self.text_encoder.config.hidden_size, text_proj_dim, device=device),
             nn.GELU(),
-            nn.LayerNorm(text_proj_dim),
-            nn.Linear(text_proj_dim, projection_dim)
+            nn.LayerNorm(text_proj_dim, device=device),
+            nn.Linear(text_proj_dim, projection_dim, device=device)
         )
 
         # Temperature parameter
