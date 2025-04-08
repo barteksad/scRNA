@@ -12,6 +12,6 @@ def main(config: DictConfig):
 
 
 if __name__ == "__main__":
-
+    print('Starting the script...')
     dotenv.load_dotenv(override=True)
     main()
