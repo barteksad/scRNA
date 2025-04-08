@@ -114,6 +114,10 @@ class GenomicsCLIP(nn.Module):
         text_tokens = torch.stack(text_tokens)
         attention_masks = torch.stack(attention_masks)
 
+        print(text_tokens.device)
+        print(cell_tokens.device)
+        print(attention_masks.device)
+
         cell_features = self.encode_cells(cell_tokens)
         text_features = self.encode_text({
             'input_ids': text_tokens,
@@ -181,22 +185,6 @@ class GenomicsCLIP(nn.Module):
         cell_tokens[:actual_length] = positional_encoding[:actual_length]
         return cell_tokens
 
-    def get_embeddings(self, batch: dict[str, torch.Tensor]) -> tuple[torch.Tensor, torch.Tensor]:
-        """Get normalized embeddings for retrieval"""
-        with torch.no_grad():
-            cell_features = self.encode_cells(batch['cell_tokens'])
-            text_features = self.encode_text({
-                'input_ids': batch['text_tokens'],
-                'attention_mask': batch['text_attention_mask']
-            })
-
-            cell_embeddings = self.cell_proj(cell_features)
-            text_embeddings = self.text_proj(text_features)
-
-            return (
-                cell_embeddings / cell_embeddings.norm(dim=1, keepdim=True),
-                text_embeddings / text_embeddings.norm(dim=1, keepdim=True)
-            )
 
 def train_clip(config: DictConfig):
     print('starting clip training...')
