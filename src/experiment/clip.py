@@ -194,6 +194,7 @@ class GenomicsCLIP(nn.Module):
             )
 
 def train_clip(config: DictConfig):
+    print('starting clip training...')
     dataset, _, _, _, mouseformer = get_components(config)
     clip_model = GenomicsCLIP(mouseformer)
     config =  {
