@@ -37,7 +37,7 @@ class SingleCellDataset(Dataset):
             )
         ]
 
-        self.obs_cols
+        self.obs_cols = obs_cols
 
     def __len__(self):
         return self.length
