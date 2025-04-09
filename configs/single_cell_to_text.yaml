@@ -17,6 +17,10 @@ exp:
   temperature: 0.7
   top_k_genes: 10
 
+  batch_size: 1
+
+  output_path: data/generated/mouse/generated/single_cell.csv
+
 wandb:
   project: sc-rna
   entity:

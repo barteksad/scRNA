@@ -20,7 +20,7 @@ class SingleCellMeta:
         data = requests.get(
             f"https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc={source_id}"
         ).text
-        soup = bs4.BeautifulSoup(data, "html.parser", from_encoding="utf-8")
+        soup = bs4.BeautifulSoup(data, "html.parser")
 
         rows = soup.find_all("tr", valign="top")
 

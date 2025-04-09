@@ -15,6 +15,9 @@ class SingleCellDataset(Dataset):
         self.n_rows_per_file = n_rows_per_file
         self.obs_cols = obs_cols
         self.files = glob.glob(os.path.join(h5ad_dir, "*"))
+        self.datas = [
+            read_h5ad(self.files[i]) for i in range(len(self.files))
+        ]
 
     def __len__(self):
         return self.n_files * self.n_rows_per_file
@@ -22,7 +25,7 @@ class SingleCellDataset(Dataset):
     def __getitem__(self, idx: int):
         file_idx = idx // self.n_rows_per_file
         row_idx = idx % self.n_rows_per_file
-        data = read_h5ad(self.files[file_idx])
+        data = self.datas[file_idx]
         obs = data.obs.iloc[row_idx]  # [self.obs_cols]
         var = data.var
         x = data.X[row_idx]
@@ -30,4 +33,4 @@ class SingleCellDataset(Dataset):
         file_name = os.path.basename(self.files[file_idx])
         source_id = file_name.split(".")[0]
 
-        return x, obs, var, source_id
+        return x, obs, var, source_id, row_idx

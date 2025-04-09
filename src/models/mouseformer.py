@@ -70,7 +70,7 @@ class MouseFormer(BaseSingleCellModel):
         norm_factor_vector = np.array(
             [self.gene_median_dict[i] for i in ensemble_ids[coding_miRNA_loc]]
         )
-        coding_miRNA_ids = ensemble_ids[coding_miRNA_loc]
+        coding_miRNA_ids = ensemble_ids.iloc[coding_miRNA_loc]
         coding_miRNA_tokens = np.array([self.token_dict[i] for i in coding_miRNA_ids])
 
         tokenized_cells = []
