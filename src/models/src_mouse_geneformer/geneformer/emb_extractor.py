@@ -483,7 +483,7 @@ class EmbExtractor:
 
         if plot_style not in ["heatmap", "umap"]:
             logger.error(
-                "Invalid option for 'plot_style'. " "Valid options: {'heatmap','umap'}"
+                "Invalid option for 'plot_style'. Valid options: {'heatmap','umap'}"
             )
             raise
 

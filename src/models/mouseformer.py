@@ -78,7 +78,11 @@ class MouseFormer(BaseSingleCellModel):
         for i in range(0, gene_expression_matrix.shape[0], self.chunk_size):
             idx = slice(i, i + self.chunk_size)
 
-            n_counts = obs[idx]["n_genes"]
+            col_to_use = "n_genes" if "n_genes" in obs[idx] else "nFeature_RNA"
+            if col_to_use not in obs[idx]:
+                n_counts = 2500
+            else:
+                n_counts = obs[idx][col_to_use]
             X_view = gene_expression_matrix[idx, coding_miRNA_loc]
             X_norm = X_view / n_counts * self.target_sum / norm_factor_vector
             X_norm = sp.csr_matrix(X_norm)

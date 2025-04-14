@@ -21,6 +21,8 @@ exp:
 
   output_path: data/generated/mouse/generated/single_cell.csv
 
+  file_id: ???
+
 wandb:
   project: sc-rna
   entity:

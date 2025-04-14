@@ -1,7 +1,6 @@
 _target_: datasets.SingleCellDataset
 h5ad_dir: data/mouse/datasets/cellXGene
-n_files: 1
-n_rows_per_file: 1
+file_id: ${exp.file_id}
 obs_cols: 
   - final_annotation
   - lineage
