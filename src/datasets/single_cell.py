@@ -1,33 +1,72 @@
 import glob
 import os
-from typing import List
+import pandas as pd
+import numpy as np
 
+from typing import List
 from scanpy import read_h5ad
 from torch.utils.data import Dataset
 
 
 class SingleCellDataset(Dataset):
     def __init__(
-        self, h5ad_dir: str, n_files: int, n_rows_per_file: int, obs_cols: List[str]
+        self,
+        h5ad_dir: str,
+        obs_cols: List[str],
+        description_dir: str,
     ):
-        self.h5ad_dir = h5ad_dir
-        self.n_files = n_files
-        self.n_rows_per_file = n_rows_per_file
-        self.obs_cols = obs_cols
-        self.files = glob.glob(os.path.join(h5ad_dir, "*"))
+        self.source_id2h5ad_files = dict([
+            (file.split("/")[-1][:-4], read_h5ad(file))
+            for file in glob.glob(os.path.join(os.getcwd()[:-3] + h5ad_dir, "*"))
+        ])
+        self.source_id2description_file = dict(
+            [
+                (file.split("/")[-1][:-4], pd.read_csv(file))
+                for file in glob.glob(
+                    os.path.join(os.getcwd()[:-3] + description_dir, "*")
+                )
+            ]
+        )
+
+        lenghts_array = [len(df) for df in self.source_id2description_file.values()]
+        self.length = sum(lenghts_array)
+        self.row_idx2_source_id = [
+            (s, file_id)
+            for s, file_id in zip(
+                np.cumsum(lenghts_array), self.source_id2description_file.keys()
+            )
+        ]
+
+        self.obs_cols
 
     def __len__(self):
-        return self.n_files * self.n_rows_per_file
+        return self.length
+    
+    def __getitem__(self, row_idx):
+        source_id = self.row_idx2_source_id[0][1]
+        
+        i = 1
+        to_subtract = 0
+        while row_idx > self.row_idx2_source_id[i][0]:
+            to_subtract += self.row_idx2_source_id[i - 1][0]
+            source_id = self.row_idx2_source_id[i][1]
+            i += 1
+        
+        row_idx -= to_subtract
+        matching_descriptions_file = self.source_id2description_file[source_id]
+        matching_descriptions = matching_descriptions_file[
+            (matching_descriptions_file["source_id"] == source_id)
+        ].iloc[row_idx]
 
-    def __getitem__(self, idx: int):
-        file_idx = idx // self.n_rows_per_file
-        row_idx = idx % self.n_rows_per_file
-        data = read_h5ad(self.files[file_idx])
-        obs = data.obs.iloc[row_idx]  # [self.obs_cols]
+        if len(matching_descriptions) == 0:
+            return None
+        
+        data = self.source_id2h5ad_files[source_id][matching_descriptions["row_id"]]
+        obs = data.obs.iloc[row_idx]
         var = data.var
         x = data.X[row_idx]
-
-        file_name = os.path.basename(self.files[file_idx])
-        source_id = file_name.split(".")[0]
-
-        return x, obs, var, source_id
+        
+        return {
+            "cell_data": (x, obs, var),
+            "text": matching_descriptions.iloc[0]["text"],
+        }
