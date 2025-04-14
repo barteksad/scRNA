@@ -7,3 +7,5 @@ pipeline:
   torch_dtype: ${torch_dtype:bfloat16}
   max_new_tokens: 1024
   temperature: 0.8
+  batch_size: ${exp.batch_size}
+  return_full_text: false

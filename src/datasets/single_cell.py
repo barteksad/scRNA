@@ -7,27 +7,19 @@ from torch.utils.data import Dataset
 
 
 class SingleCellDataset(Dataset):
-    def __init__(
-        self, h5ad_dir: str, n_files: int, n_rows_per_file: int, obs_cols: List[str]
-    ):
+    def __init__(self, h5ad_dir: str, file_id: str, obs_cols: List[str]):
         self.h5ad_dir = h5ad_dir
-        self.n_files = n_files
-        self.n_rows_per_file = n_rows_per_file
+        self.file_id = file_id
         self.obs_cols = obs_cols
-        self.files = glob.glob(os.path.join(h5ad_dir, "*"))
+        self.file = os.path.join(h5ad_dir, f"{file_id}.h5ad")
+        self.data = read_h5ad(self.file)
 
     def __len__(self):
-        return self.n_files * self.n_rows_per_file
+        return self.data.X.shape[0]
 
-    def __getitem__(self, idx: int):
-        file_idx = idx // self.n_rows_per_file
-        row_idx = idx % self.n_rows_per_file
-        data = read_h5ad(self.files[file_idx])
-        obs = data.obs.iloc[row_idx]  # [self.obs_cols]
-        var = data.var
-        x = data.X[row_idx]
+    def __getitem__(self, row_idx: int):
+        obs = self.data.obs.iloc[row_idx]  # [self.obs_cols]
+        var = self.data.var
+        x = self.data.X[row_idx]
 
-        file_name = os.path.basename(self.files[file_idx])
-        source_id = file_name.split(".")[0]
-
-        return x, obs, var, source_id
+        return x, obs, var, self.file_id, row_idx

@@ -221,7 +221,7 @@ def main(**kwargs):
 
     # Generate saving path of model and logdata
     current_date = datetime.datetime.now(tz=timezone)
-    datestamp = f"{str(current_date.year)[-2:]}{current_date.month:02d}{current_date.day:02d}_{current_date.strftime('%X').replace(':','')}"
+    datestamp = f"{str(current_date.year)[-2:]}{current_date.month:02d}{current_date.day:02d}_{current_date.strftime('%X').replace(':', '')}"
     if mouse_geneformer_flag == True:
         run_name = f"{datestamp}_mouse-geneformer_PM{use_or_not_use}_20M_DV{dataset_version}_T{task}_L{num_layers}_emb{num_embed_dim}_SL{max_input_size}_E{epochs}_B{geneformer_batch_size}_LR{max_lr}_LS{lr_schedule_fn}_WU{warmup_steps}_DR{hidden_dropout_prob}_ACT{activ_fn}_O{optimizer}_DS{num_gpus}"
     else:
