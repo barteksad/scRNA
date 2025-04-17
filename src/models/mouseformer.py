@@ -1,4 +1,3 @@
-import os
 import pickle
 from typing import List
 
@@ -23,7 +22,8 @@ def rank_genes(gene_vector, gene_tokens, gene_names):
 
     return df
 
-def extract_last6(id_str): # potentially something smarter
+
+def extract_last6(id_str):  # potentially something smarter
     if pd.isna(id_str) or len(str(id_str)) < 6:
         return 0
     return int(str(id_str)[-6:])
@@ -53,8 +53,9 @@ class MouseFormer(BaseSingleCellModel):
 
         # protein-coding and miRNA gene list dictionary for selecting .loom rows for tokenization
         self.genelist_dict = dict(zip(self.gene_keys, [True] * len(self.gene_keys)))
-        self.sorted_gene_mapping = { k : i for i, k in enumerate(sorted(self.gene_mapping_dict.keys())) }
-
+        self.sorted_gene_mapping = {
+            k: i for i, k in enumerate(sorted(self.gene_mapping_dict.keys()))
+        }
 
     def tokenize_single_cell(
         self, gene_expression_matrix, obs: pd.DataFrame, var: pd.DataFrame
@@ -91,9 +92,18 @@ class MouseFormer(BaseSingleCellModel):
             if col_to_use not in obs[idx]:
                 n_counts = 2500
             else:
-                n_counts = obs[idx][col_to_use]
+                n_counts = obs[idx][col_to_use].values[0]
+            
+            if not isinstance(n_counts, (float, int)):
+                n_counts = n_counts.values[0]
             X_view = gene_expression_matrix[idx, coding_miRNA_loc]
-            X_norm = X_view / n_counts * self.target_sum / norm_factor_vector
+
+            X_norm = (
+                X_view.reshape(norm_factor_vector.shape)
+                / n_counts
+                * self.target_sum
+                / norm_factor_vector
+            )
             X_norm = sp.csr_matrix(X_norm)
 
             tokenized_cells += [

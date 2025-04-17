@@ -1,0 +1,33 @@
+_target_: datasets.preprocessed_single_cell.PreprocessedCellDataset
+data_dir: data/mouse/preprocessed
+obs_cols: 
+  - final_annotation
+  - lineage
+  - tag
+  - assay_ontology_term_id
+  - cell_type_ontology_term_id
+  - development_stage_ontology_term_id
+  - donor_id
+  - disease_ontology_term_id
+  - is_primary_data
+  - organism_ontology_term_id
+  - self_reported_ethnicity_ontology_term_id
+  - sex_ontology_term_id
+  - suspension_type
+  - tissue_type
+  - tissue_ontology_term_id
+  - cell_type
+  - assay
+  - disease
+  - organism
+  - sex
+  - tissue
+  - self_reported_ethnicity
+  - development_stage
+  - observation_joinid
+cell_tokenizer: ${model}
+text_tokenizer: 
+  _target_: transformers.AutoTokenizer.from_pretrained
+  pretrained_model_name_or_path: ${exp.text_model_name}
+max_cell_tokens: ${exp.max_cell_tokens}
+max_text_tokens: ${exp.max_text_tokens}
