@@ -1,0 +1,22 @@
+2025-05-13 11:46:38,963 - INFO - Starting RAG pipeline
+2025-05-13 11:46:38,964 - INFO - Answering model: gpt-4o-mini
+2025-05-13 11:46:38,964 - INFO - Initializing components
+2025-05-13 11:46:39,657 - INFO - HTTP Request: GET http://localhost:6333 "HTTP/1.1 200 OK"
+2025-05-13 11:46:40,769 - INFO - HTTP Request: GET http://localhost:6333/collections/cellxgene_only/exists "HTTP/1.1 200 OK"
+2025-05-13 11:46:40,771 - INFO - Retrieving context from vector database
+2025-05-13 11:46:40,771 - INFO - Starting literature retrieval from vector database
+2025-05-13 11:46:41,771 - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-05-13 11:46:41,805 - INFO - HTTP Request: POST http://localhost:6333/collections/cellxgene_only/points/query "HTTP/1.1 200 OK"
+2025-05-13 11:46:41,808 - INFO - Literature retrieval completed
+2025-05-13 11:46:41,808 - INFO - Retrieving context from SPOKE knowledge graph
+2025-05-13 11:46:41,808 - INFO - Starting SPOKE knowledge graph retrieval
+2025-05-13 11:46:45,637 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-05-13 11:46:57,949 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-05-13 11:46:57,956 - INFO - SPOKE knowledge graph retrieval completed
+2025-05-13 11:46:57,956 - INFO - Combining contexts for final answer generation
+2025-05-13 11:46:57,956 - INFO - Generating final answer
+2025-05-13 11:46:57,976 - INFO - 
+LiteLLM completion() model= gpt-4o-mini; provider = openai
+2025-05-13 11:47:11,857 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-05-13 11:47:11,889 - INFO - Wrapper: Completed Call, calling success_handler
+2025-05-13 11:47:11,891 - INFO - Pipeline completed successfully
