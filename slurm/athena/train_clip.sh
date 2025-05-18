@@ -5,7 +5,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=80G
-#SBATCH --time=24:00:00
+#SBATCH --time=48:00:00
 #SBATCH --output=slurm_logs/sc_rna-%A.log
 
 cd /net/tscratch/people/plgbsadlej/scRNA
@@ -16,6 +16,9 @@ export HF_HOME="/net/tscratch/people/plgbsadlej/.cache/"
 export TOKENIZERS_PARALLELISM=false
 
 source ./env/bin/activate
+
+export WANDB_CACHE_DIR="/net/tscratch/people/plgbsadlej/.cache/wandb"
+export WANDB_ARTIFACT_DIR="/net/tscratch/people/plgbsadlej/.cache/wandb/artifacts"
 
 export PYTHONPATH="/net/tscratch/people/plgbsadlej/scRNA"
 export OPENAI_API_KEY="dummy key"

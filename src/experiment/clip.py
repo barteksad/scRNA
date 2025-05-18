@@ -11,6 +11,7 @@ from tqdm import tqdm
 from transformers import BertModel
 from hydra.utils import instantiate
 import os
+from torch.utils.data import random_split
 
 
 class GenomicsCLIP(nn.Module):
@@ -212,6 +213,13 @@ def get_components(config):
 def train_clip(config: DictConfig):
     print("starting clip training...")
     dataset = get_components(config)
+
+    # Split dataset into train and validation sets
+    train_size = int(0.8 * len(dataset))
+    val_size = len(dataset) - train_size
+    train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
+    print(f"Training set size: {train_size}, Validation set size: {val_size}")
+
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
 
     # Create model with parameters from config
@@ -245,7 +253,7 @@ def train_clip(config: DictConfig):
         "log_dir": config.exp.log_dir,
     }
 
-    train_genomics_clip(clip_model, dataset, None, train_config)
+    train_genomics_clip(clip_model, train_dataset, val_dataset, train_config)
 
 
 def train_genomics_clip(
@@ -347,8 +355,8 @@ def train_genomics_clip(
             if config.get("log_accuracy", False):
                 train_accuracy.append(model.accuracy_paired_batch(batch))
 
-            # Log and save model every log_interval steps
-            if global_step % log_interval == 0:
+            # Save model checkpoint every 100 steps
+            if global_step % 100 == 0:
                 avg_train_loss = train_loss / (global_step % len(train_loader) or 1)
                 avg_train_accuracy = 0.0
                 if config.get("log_accuracy", False):
@@ -358,72 +366,108 @@ def train_genomics_clip(
                     f"Step {global_step}: Train Loss = {avg_train_loss:.4f}, Train Accuracy = {avg_train_accuracy:.4f}"
                 )
 
-                # Validation phase
-                avg_val_loss, avg_val_accuracy = 0.0, 0.0
-                if val_loader is not None:
-                    model.eval()
-                    val_loss = 0.0
-                    with torch.no_grad():
-                        val_accuracy = []
-                        for val_batch in val_loader:
-                            logits_per_cell, logits_per_text = model(val_batch)
-                            val_loss += clip_loss(
-                                logits_per_cell, logits_per_text
-                            ).item()
-                            val_accuracy.append(model.accuracy_paired_batch(val_batch))
-                    avg_val_loss = val_loss / len(val_loader)
-                    print(f"Step {global_step}: Val Loss = {avg_val_loss:.4f}")
-                    if config.get("log_accuracy", False):
-                        avg_val_accuracy = np.mean(val_accuracy)
-                        print(
-                            f"Step {global_step}: Val Accuracy = {avg_val_accuracy:.4f}"
-                        )
-
                 # Log to wandb
                 if config.get("use_wandb", False):
                     wandb.log(
                         {
                             "train/step_loss": avg_train_loss,
                             "train/step_accuracy": avg_train_accuracy,
-                            "val/step_loss": avg_val_loss,
-                            "val/step_accuracy": avg_val_accuracy,
                             "train/step": global_step,
                         }
                     )
 
-                # Save model if it's the best so far
-                if val_loader is not None and avg_val_loss < best_val_loss:
-                    best_val_loss = avg_val_loss
+                # Save model checkpoint
+                save_path = config.get("model_save_path", "genomics_clip.pt")
+                if "log_dir" in config and config["log_dir"]:
+                    save_path = os.path.join(config["log_dir"], save_path)
 
-                    # Create save path using log_dir if available
-                    save_path = config.get("model_save_path", "best_genomics_clip.pt")
-                    if "log_dir" in config and config["log_dir"]:
-                        save_path = os.path.join(config["log_dir"], save_path)
+                # Ensure directory exists
+                os.makedirs(os.path.dirname(os.path.abspath(save_path)), exist_ok=True)
 
-                    # Ensure directory exists
-                    os.makedirs(
-                        os.path.dirname(os.path.abspath(save_path)), exist_ok=True
-                    )
+                torch.save(
+                    {
+                        "step": global_step,
+                        "model_state_dict": model.state_dict(),
+                        # "optimizer_state_dict": optimizer.state_dict(),
+                        "train_loss": avg_train_loss,
+                    },
+                    # f"{global_step}_step_train_{save_path}",
+                    "model-weights",
+                )
 
-                    torch.save(
-                        {
-                            "step": global_step,
-                            "model_state_dict": model.state_dict(),
-                            "optimizer_state_dict": optimizer.state_dict(),
-                            "loss": best_val_loss,
-                        },
-                        f"{global_step}_step_{save_path}",
+                # Create and log wandb artifact
+                if config.get("use_wandb", False):
+                    art = wandb.Artifact(
+                        name="model-weights",
+                        type="model",
+                        description=f"Model checkpoint at step {global_step} with training loss {avg_train_loss:.4f}",
                     )
-                    print(
-                        f"Step {global_step}: Saved best model with val loss {best_val_loss:.4f}"
-                    )
+                    art.add_file("model-weights")
+                    wandb.log_artifact(art)
 
                 # Reset metrics for next interval
                 train_loss = 0.0
                 train_accuracy = []
 
-                # Set model back to training mode
-                model.train()
+        # Validation phase at the end of each epoch
+        if val_loader is not None:
+            model.eval()
+            val_loss = 0.0
+            val_accuracy = []
+            with torch.no_grad():
+                for val_batch in val_loader:
+                    logits_per_cell, logits_per_text = model(val_batch)
+                    val_loss += clip_loss(logits_per_cell, logits_per_text).item()
+                    if config.get("log_accuracy", False):
+                        val_accuracy.append(model.accuracy_paired_batch(val_batch))
+
+            avg_val_loss = val_loss / len(val_loader)
+            print(f"Epoch {epoch + 1}: Val Loss = {avg_val_loss:.4f}")
+
+            if config.get("log_accuracy", False):
+                avg_val_accuracy = np.mean(val_accuracy)
+                print(f"Epoch {epoch + 1}: Val Accuracy = {avg_val_accuracy:.4f}")
+
+            # Log validation metrics to wandb
+            if config.get("use_wandb", False):
+                wandb.log(
+                    {
+                        "val/epoch_loss": avg_val_loss,
+                        "val/epoch_accuracy": avg_val_accuracy
+                        if config.get("log_accuracy", False)
+                        else None,
+                        "epoch": epoch + 1,
+                    }
+                )
+
+            # Save model checkpoint with validation metrics
+            save_path = config.get("model_save_path", "genomics_clip.pt")
+            if "log_dir" in config and config["log_dir"]:
+                save_path = os.path.join(config["log_dir"], save_path)
+
+            torch.save(
+                {
+                    "step": global_step,
+                    "epoch": epoch + 1,
+                    "model_state_dict": model.state_dict(),
+                    # "optimizer_state_dict": optimizer.state_dict(),
+                    "val_loss": avg_val_loss,
+                },
+                "model-weights",
+            )
+
+            # Create and log wandb artifact for validation checkpoint
+            if config.get("use_wandb", False):
+                art = wandb.Artifact(
+                    name="model-weights",
+                    type="model",
+                    description=f"Model checkpoint at epoch {epoch + 1} with validation loss {avg_val_loss:.4f}",
+                )
+                art.add_file("model-weights")
+                wandb.log_artifact(art)
+
+        # Set model back to training mode
+        model.train()
 
     if config.get("use_wandb", False):
         wandb.finish()
