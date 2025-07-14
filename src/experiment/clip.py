@@ -812,6 +812,9 @@ def train_clip_single(config: DictConfig, device: str):
         "use_embedding_cache": config.exp.get("use_embedding_cache", False),
         "cache_dir": config.exp.get("cache_dir", "cache"),
         "whole_dataset_eval_interval": config.exp.get("whole_dataset_eval_interval", 1),
+        "distributed_eval_strategy": config.exp.get(
+            "distributed_eval_strategy", "reduce"
+        ),
     }
 
     train_genomics_clip(clip_model, train_dataset, val_dataset, train_config)
@@ -874,6 +877,9 @@ def train_clip_distributed(config: DictConfig, rank: int, world_size: int, devic
         "whole_dataset_eval_interval": config.exp.get("whole_dataset_eval_interval", 1),
         "rank": rank,
         "world_size": world_size,
+        "distributed_eval_strategy": config.exp.get(
+            "distributed_eval_strategy", "reduce"
+        ),
     }
 
     train_genomics_clip(clip_model, train_dataset, val_dataset, train_config)
