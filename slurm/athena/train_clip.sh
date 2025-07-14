@@ -34,7 +34,5 @@ export NCCL_DEBUG=INFO
 export NCCL_IB_DISABLE=1
 export NCCL_P2P_DISABLE=1
 
-pip install importlib-metadata
-
 # Run distributed training using torchrun
 torchrun --nproc_per_node=8 --nnodes=1 --node_rank=0 --master_addr=$MASTER_ADDR --master_port=$MASTER_PORT src/clip.py

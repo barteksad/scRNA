@@ -45,6 +45,11 @@ exp:
   use_embedding_cache: true
   cache_dir: "cache"
   whole_dataset_eval_interval: 1
+  # Distributed evaluation strategy:
+  # - "gather": Gather all embeddings on main process (accurate but memory intensive)
+  # - "reduce": Reduce metrics across processes (memory efficient but less accurate)  
+  # - "memory_efficient": Use memory-efficient single-GPU evaluation
+  distributed_eval_strategy: "reduce"
   
   # Distributed training config
   distributed: true

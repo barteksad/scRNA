@@ -301,76 +301,179 @@ class GenomicsCLIP(nn.Module):
         world_size = get_world_size()
         rank = get_rank()
 
+        if is_main_process():
+            print(f"Starting distributed evaluation with {world_size} processes")
+
+        try:
+            # Compute embeddings for this process's subset
+            cell_embeddings, text_embeddings = self.compute_embeddings(
+                dataloader, use_cache, cache_dir
+            )
+
+            if is_main_process():
+                print(
+                    f"Computed local embeddings: cell={cell_embeddings.shape}, text={text_embeddings.shape}"
+                )
+
+            if world_size == 1:
+                # Single GPU case - compute metrics directly
+                return self._compute_retrieval_metrics(cell_embeddings, text_embeddings)
+
+            # Distributed case - gather all embeddings on main process
+            if is_main_process():
+                print("Gathering embeddings from all processes...")
+
+            # Gather embeddings from all processes
+            if dist.is_initialized():
+                try:
+                    # Convert to tensors and move to GPU for gathering
+                    cell_embeddings_gpu = cell_embeddings.to(self.device)
+                    text_embeddings_gpu = text_embeddings.to(self.device)
+
+                    # Gather sizes first
+                    local_size = torch.tensor(
+                        [cell_embeddings.size(0)], device=self.device
+                    )
+                    all_sizes = [
+                        torch.zeros_like(local_size) for _ in range(world_size)
+                    ]
+                    dist.all_gather(all_sizes, local_size)
+
+                    if is_main_process():
+                        print(
+                            f"Gathered sizes from all processes: {[s.item() for s in all_sizes]}"
+                        )
+
+                    # Gather embeddings
+                    all_cell_embeddings = []
+                    all_text_embeddings = []
+
+                    for i in range(world_size):
+                        size = all_sizes[i].item()
+                        if size > 0:
+                            if i == rank:
+                                all_cell_embeddings.append(cell_embeddings_gpu)
+                                all_text_embeddings.append(text_embeddings_gpu)
+                            else:
+                                cell_placeholder = torch.zeros(
+                                    size, cell_embeddings.size(1), device=self.device
+                                )
+                                text_placeholder = torch.zeros(
+                                    size, text_embeddings.size(1), device=self.device
+                                )
+                                all_cell_embeddings.append(cell_placeholder)
+                                all_text_embeddings.append(text_placeholder)
+
+                    # Perform the actual gathering
+                    for i in range(world_size):
+                        if all_sizes[i].item() > 0:
+                            dist.broadcast(all_cell_embeddings[i], src=i)
+                            dist.broadcast(all_text_embeddings[i], src=i)
+
+                    # Concatenate all embeddings on main process
+                    if is_main_process():
+                        global_cell_embeddings = torch.cat(
+                            all_cell_embeddings, dim=0
+                        ).cpu()
+                        global_text_embeddings = torch.cat(
+                            all_text_embeddings, dim=0
+                        ).cpu()
+
+                        print(
+                            f"Global embeddings shape: cell={global_cell_embeddings.shape}, text={global_text_embeddings.shape}"
+                        )
+
+                        # Compute metrics on the full dataset
+                        metrics = self._compute_retrieval_metrics(
+                            global_cell_embeddings, global_text_embeddings
+                        )
+                        return metrics
+                    else:
+                        # Non-main processes return empty metrics
+                        return {}
+
+                except Exception as e:
+                    if is_main_process():
+                        print(f"Error in distributed evaluation: {e}")
+                        print("Falling back to per-process evaluation...")
+                    # Fallback to per-process evaluation
+                    return self._compute_retrieval_metrics(
+                        cell_embeddings, text_embeddings
+                    )
+            else:
+                # Fallback if distributed not initialized
+                return self._compute_retrieval_metrics(cell_embeddings, text_embeddings)
+
+        except Exception as e:
+            if is_main_process():
+                print(f"Critical error in distributed evaluation: {e}")
+                print("Returning empty metrics...")
+            return {}
+
+    def evaluate_whole_dataset_simple_distributed(
+        self, dataloader: DataLoader
+    ) -> dict[str, float]:
+        """
+        Simple distributed evaluation that computes metrics per process and averages them.
+        This is a fallback method that's more memory efficient but less accurate.
+        """
+        world_size = get_world_size()
+        rank = get_rank()
+
+        if is_main_process():
+            print(f"Starting simple distributed evaluation with {world_size} processes")
+
         # Compute embeddings for this process's subset
-        cell_embeddings, text_embeddings = self.compute_embeddings(
-            dataloader, use_cache, cache_dir
+        cell_embeddings, text_embeddings = self.compute_embeddings(dataloader)
+
+        # Compute metrics on local subset
+        local_metrics = self._compute_retrieval_metrics(
+            cell_embeddings, text_embeddings
         )
 
         if world_size == 1:
-            # Single GPU case - compute metrics directly
-            return self._compute_retrieval_metrics(cell_embeddings, text_embeddings)
+            return local_metrics
 
-        # Distributed case - gather all embeddings on main process
-        if is_main_process():
-            print("Gathering embeddings from all processes...")
-
-        # Gather embeddings from all processes
+        # Reduce metrics across all processes
         if dist.is_initialized():
-            # Convert to tensors and move to GPU for gathering
-            cell_embeddings_gpu = cell_embeddings.to(self.device)
-            text_embeddings_gpu = text_embeddings.to(self.device)
+            try:
+                # Convert metrics to tensors for reduction
+                metric_names = [
+                    "text_to_cell_accuracy",
+                    "cell_to_text_accuracy",
+                    "average_accuracy",
+                ]
+                reduced_metrics = {}
 
-            # Gather sizes first
-            local_size = torch.tensor([cell_embeddings.size(0)], device=self.device)
-            all_sizes = [torch.zeros_like(local_size) for _ in range(world_size)]
-            dist.all_gather(all_sizes, local_size)
-
-            # Gather embeddings
-            all_cell_embeddings = []
-            all_text_embeddings = []
-
-            for i in range(world_size):
-                size = all_sizes[i].item()
-                if size > 0:
-                    if i == rank:
-                        all_cell_embeddings.append(cell_embeddings_gpu)
-                        all_text_embeddings.append(text_embeddings_gpu)
-                    else:
-                        cell_placeholder = torch.zeros(
-                            size, cell_embeddings.size(1), device=self.device
+                for metric_name in metric_names:
+                    if metric_name in local_metrics:
+                        metric_tensor = torch.tensor(
+                            local_metrics[metric_name], device=self.device
                         )
-                        text_placeholder = torch.zeros(
-                            size, text_embeddings.size(1), device=self.device
-                        )
-                        all_cell_embeddings.append(cell_placeholder)
-                        all_text_embeddings.append(text_placeholder)
+                        dist.all_reduce(metric_tensor, op=dist.ReduceOp.SUM)
+                        reduced_metrics[metric_name] = metric_tensor.item() / world_size
 
-            # Perform the actual gathering
-            for i in range(world_size):
-                if all_sizes[i].item() > 0:
-                    dist.broadcast(all_cell_embeddings[i], src=i)
-                    dist.broadcast(all_text_embeddings[i], src=i)
+                # Handle top-k metrics
+                for k in [1, 5, 10]:
+                    for direction in ["text_to_cell", "cell_to_text"]:
+                        metric_name = f"{direction}_top{k}_accuracy"
+                        if metric_name in local_metrics:
+                            metric_tensor = torch.tensor(
+                                local_metrics[metric_name], device=self.device
+                            )
+                            dist.all_reduce(metric_tensor, op=dist.ReduceOp.SUM)
+                            reduced_metrics[metric_name] = (
+                                metric_tensor.item() / world_size
+                            )
 
-            # Concatenate all embeddings on main process
-            if is_main_process():
-                global_cell_embeddings = torch.cat(all_cell_embeddings, dim=0).cpu()
-                global_text_embeddings = torch.cat(all_text_embeddings, dim=0).cpu()
+                return reduced_metrics
 
-                print(
-                    f"Global embeddings shape: cell={global_cell_embeddings.shape}, text={global_text_embeddings.shape}"
-                )
+            except Exception as e:
+                if is_main_process():
+                    print(f"Error in simple distributed evaluation: {e}")
+                return local_metrics
 
-                # Compute metrics on the full dataset
-                metrics = self._compute_retrieval_metrics(
-                    global_cell_embeddings, global_text_embeddings
-                )
-                return metrics
-            else:
-                # Non-main processes return empty metrics
-                return {}
-        else:
-            # Fallback if distributed not initialized
-            return self._compute_retrieval_metrics(cell_embeddings, text_embeddings)
+        return local_metrics
 
     def evaluate_whole_dataset_memory_efficient(
         self, dataloader: DataLoader, chunk_size: int = 1000
@@ -510,18 +613,38 @@ class GenomicsCLIP(nn.Module):
         return metrics
 
     def evaluate_whole_dataset(
-        self, dataloader: DataLoader, use_cache: bool = False, cache_dir: str = "cache"
+        self,
+        dataloader: DataLoader,
+        use_cache: bool = False,
+        cache_dir: str = "cache",
+        distributed_strategy: str = "gather",
     ) -> dict[str, float]:
         """
         Main evaluation method that chooses the appropriate evaluation strategy.
+
+        Args:
+            dataloader: DataLoader for the dataset
+            use_cache: Whether to use embedding caching
+            cache_dir: Directory for caching embeddings
+            distributed_strategy: Strategy for distributed evaluation:
+                - "gather": Gather all embeddings on main process (more accurate but memory intensive)
+                - "reduce": Reduce metrics across processes (memory efficient but less accurate)
+                - "memory_efficient": Use memory-efficient single-GPU evaluation
         """
         world_size = get_world_size()
 
         if world_size > 1:
-            # Use distributed evaluation for multi-GPU
-            return self.evaluate_whole_dataset_distributed(
-                dataloader, use_cache, cache_dir
-            )
+            if distributed_strategy == "gather":
+                # Use distributed evaluation for multi-GPU
+                return self.evaluate_whole_dataset_distributed(
+                    dataloader, use_cache, cache_dir
+                )
+            elif distributed_strategy == "reduce":
+                # Use simple distributed evaluation (metric averaging)
+                return self.evaluate_whole_dataset_simple_distributed(dataloader)
+            else:
+                # Fallback to memory-efficient evaluation
+                return self.evaluate_whole_dataset_memory_efficient(dataloader)
         else:
             # Use memory-efficient evaluation for single GPU
             return self.evaluate_whole_dataset_memory_efficient(dataloader)
@@ -986,23 +1109,30 @@ def train_genomics_clip(
                 if config.get("log_accuracy", False):
                     print(f"Epoch {epoch + 1}: Val Accuracy = {avg_val_accuracy:.4f}")
 
-            # Whole dataset evaluation (if enabled) - only on main process
+            # Whole dataset evaluation (if enabled) - all processes participate
             whole_dataset_metrics = {}
             if (
                 config.get("use_whole_dataset_eval", False)
                 and (epoch + 1) % config.get("whole_dataset_eval_interval", 1) == 0
-                and is_main_process(rank)
             ):
-                print("Performing whole dataset evaluation...")
+                if is_main_process(rank):
+                    print("Performing whole dataset evaluation...")
+
+                # All processes participate in distributed evaluation
                 whole_dataset_metrics = actual_model.evaluate_whole_dataset(
                     val_loader,
                     use_cache=config.get("use_embedding_cache", False),
                     cache_dir=config.get("cache_dir", "cache"),
+                    distributed_strategy=config.get(
+                        "distributed_eval_strategy", "gather"
+                    ),
                 )
 
-                print("Whole dataset evaluation results:")
-                for metric_name, metric_value in whole_dataset_metrics.items():
-                    print(f"  {metric_name}: {metric_value:.4f}")
+                # Only main process prints results (metrics may be empty on other processes)
+                if is_main_process(rank) and whole_dataset_metrics:
+                    print("Whole dataset evaluation results:")
+                    for metric_name, metric_value in whole_dataset_metrics.items():
+                        print(f"  {metric_name}: {metric_value:.4f}")
 
             # Log validation metrics to wandb (only main process)
             if config.get("use_wandb", False) and is_main_process(rank):
@@ -1014,9 +1144,10 @@ def train_genomics_clip(
                     "epoch": epoch + 1,
                 }
 
-                # Add whole dataset metrics if available
-                for metric_name, metric_value in whole_dataset_metrics.items():
-                    log_dict[f"val/whole_dataset_{metric_name}"] = metric_value
+                # Add whole dataset metrics if available (only on main process)
+                if whole_dataset_metrics:
+                    for metric_name, metric_value in whole_dataset_metrics.items():
+                        log_dict[f"val/whole_dataset_{metric_name}"] = metric_value
 
                 wandb.log(log_dict)
 
